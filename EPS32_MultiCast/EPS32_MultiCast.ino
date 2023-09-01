@@ -5,8 +5,8 @@
 
 
 //WIFI
-const char *wifi_ssid = "YOURSSID";
-const char *wifi_password = "YOURKEY";
+const char *wifi_ssid = "YourSSID";
+const char *wifi_password = "YourKEY";
 
 //OSC Vars
 osc oscObject;
@@ -15,7 +15,8 @@ unsigned int oscRXPort = 5555;    //port that this device will RECIVE packets on
 unsigned int oscTXPort = 5556;    //port that this device will SEND packets to
 //Multicast address to TX to
 IPAddress multicast_ip_address = IPAddress(239,1,1,1);    //Muticast IP
-float exampleData[2] = {0,0};
+const uint8_t numberOfControls = 2;
+float exampleData[numberOfControls] = {0,0};
 
 void setup() 
 {
@@ -40,8 +41,8 @@ void setup()
   oscUDP.onPacket(handleData);
 
   //Set up your OSC objects by adding in the controll names eg here we add /slider1 /slider2 /rotary1 /fader1
-  oscObject.addControll((char*)"/fader1", 1, 'f');
-  oscObject.addControll((char*)"/fader2", 1, 'f');
+  oscObject.addControll((char*)"/fader1", 1, 'f',1000);
+  oscObject.addControll((char*)"/fader2", 1, 'f',1000);
 }
 
 void loop() 
@@ -71,6 +72,25 @@ void loop()
   }
   //Wait for 1/4 second
   delay(1000);
+
+  //check if the last message for fader1 was less than its timeout period of 1000ms (1second) as set up when added in setup
+  if(oscObject.hasControllTimedOut((char*)"/fader1"))
+  {
+    Serial.printf("\r\nFader1 has timed out.");
+  }
+  else
+  {
+    Serial.printf("\r\nFader1 is valid.");
+  }
+  //check if the last message for fader1 was less than its timeout period of 1000ms (1second) as set up when added in setup
+  if(oscObject.hasControllTimedOut((char*)"/fader2"))
+  {
+    Serial.printf("\t\tFader2 has timed out.");
+  }
+  else
+  {
+    Serial.printf("\t\tFader2 is valid.");
+  }
 }
 
 //debug to check your packet
@@ -85,9 +105,19 @@ void dumpString(char* tempString, unsigned short int stringLength)
 
 void handleData(AsyncUDPPacket packet)
 {
+  LLNODE* anOSCItem;
+  
   memcpy(oscObject.packetBuffer, packet.data(), packet.length());
   oscObject.currentPacketSize = packet.length();
   oscObject.toggleState();
   oscObject.parseOSCPacket();
   Serial.printf("\r\n\tGot\t%d\tBytes", packet.length());
+
+  //locate the last parsed osc item stored in oscObject.currentControllID
+  anOSCItem = oscObject.findByID(oscObject.currentControllID);
+  if(anOSCItem!=NULL)
+  {
+    Serial.printf("\r\nReceived control [ %s ]\tValue [ %f ]", anOSCItem->_controllName, anOSCItem->_currentValue);
+  }
+  
 }

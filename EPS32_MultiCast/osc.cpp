@@ -40,7 +40,8 @@ void osc::parseOSCPacket()
     		nodePointer->_controllValueArray[counter] = primaryControllValue;
   	  }
   	  nodePointer->_currentValue = nodePointer->_controllValueArray[0];
-      nodePointer->_timer[0] = millis();
+      startTimer(nodePointer->_timer[2], nodePointer->_timer);
+	  //nodePointer->_timer[0] = millis();
   	  primaryControllValue = nodePointer->_currentValue;
     }
     else if(nodePointer->_varType=='i')
@@ -57,8 +58,9 @@ void osc::parseOSCPacket()
         nodePointer->_controllValueArray[counter] = tempInt;
       }
       nodePointer->_currentValue = nodePointer->_controllValueArray[0];
-      nodePointer->_timer[0] = millis();
-      primaryControllValue = nodePointer->_currentValue;
+      //nodePointer->_timer[0] = millis();
+      startTimer(nodePointer->_timer[2], nodePointer->_timer);
+	  primaryControllValue = nodePointer->_currentValue;
     }
   }
   else
@@ -195,6 +197,7 @@ void osc::addControll(char* controllName, unsigned short int numOfValues, char v
   {
     addControll(controllName, numOfValues);
     nodePointer = findByName(controllName);
+    nodePointer->_timer[2] = timeOut;
     nodePointer->_varType = valueType;
   }
 }
@@ -333,4 +336,29 @@ LLNODE* osc::findLast()
       nodePointer = nodePointer->nextNode; 
    } 
    return NULL;
+}
+
+void osc::startTimer(unsigned long durationInMillis, unsigned long* timer)
+{
+  timer[0] = millis(); 
+  timer[2] = durationInMillis;
+}
+
+byte osc::hasTimedOut(unsigned long* timer)
+{
+  timer[1] = millis();
+  if(timer[2] < timer[1]-timer[0])
+  {
+    return 1;
+  }
+  return 0;
+}
+
+byte osc::hasControllTimedOut(char* controllName)
+{
+	LLNODE* nodePointer = findByName(controllName);
+	if(nodePointer!=NULL)
+	{
+		return hasTimedOut(nodePointer->_timer);
+	}
 }
