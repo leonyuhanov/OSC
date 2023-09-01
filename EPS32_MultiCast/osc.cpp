@@ -212,6 +212,15 @@ float osc::getValue(unsigned short int nodeID)
   return -1;
 }
 
+float osc::getValue(char* controllName)
+{
+	LLNODE* nodePointer = findByName(controllName);
+	if(nodePointer!=NULL)
+	{
+		return nodePointer->_currentValue;
+	}
+}
+
 void osc::setValue(char* controllName, float valueToSet)
 {
   LLNODE* nodePointer = findByName(controllName);

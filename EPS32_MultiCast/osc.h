@@ -36,6 +36,7 @@ class osc
     LLNODE* findLast();
     LLNODE* findByID(unsigned short int nodeID);
     float getValue(unsigned short int nodeID);
+	float getValue(char* controllName);
     void setValue(char* controllName, float valueToSet);
     void generateOSCPacket(char* controllName);
     LLNODE* findByName(char* controllName);
