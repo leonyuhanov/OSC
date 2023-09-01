@@ -219,6 +219,7 @@ float osc::getValue(char* controllName)
 	{
 		return nodePointer->_currentValue;
 	}
+ return -1;
 }
 
 void osc::setValue(char* controllName, float valueToSet)
@@ -370,4 +371,5 @@ byte osc::hasControllTimedOut(char* controllName)
 	{
 		return hasTimedOut(nodePointer->_timer);
 	}
+  return 0;
 }
