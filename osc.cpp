@@ -7,6 +7,8 @@ osc::osc()
   packetBuffer = new char[maxPacketBufferSize];
   startPointer = NULL;
   totalNodes = 0;
+  txPacketBuffer = new char[maxPacketBufferSize];
+  txPacketBufferLength=0;
 }
 
 void osc::parseOSCPacket()
@@ -63,6 +65,66 @@ void osc::parseOSCPacket()
   {
     //Control not registered, maybe auto add?    
   }  
+}
+
+void osc::generateOSCPacket(char* controllName)
+{
+  unsigned short int txPacketSize = 8, bufferIndex=0, dataSent=0;
+  double fractpart, intpart, padding=0;
+  char oscBufferPadding[4] = {44,102,0,0}, padBuffer[3] = {0,0,0};
+  unsigned char* floatCharPointer;
+
+  LLNODE* oscItem = findByName(controllName);
+  if(oscItem!=NULL)
+  {
+    //Clear the TX buffer
+    clearTXBuffer();
+    txPacketSize += strlen(oscItem->_controllName)+1;
+    //Calculate Padding to make the string 32bit able as per osc spec https://opensoundcontrol.stanford.edu/spec-1_0.html#osc-packets
+    padding = (strlen(oscItem->_controllName)+1)*8;
+    padding = padding/32;
+    fractpart = modf(padding , &intpart);
+    if(fractpart==0.75)
+    {
+      padding=1;
+    }
+    else if(fractpart==0.5)
+    {
+      padding=2;
+    }
+    else if(fractpart==0.25)
+    {
+      padding=3;
+    }
+    else
+    {
+      padding=0;
+    }
+    txPacketSize+=padding;
+    //txPacketSize is now the total number of bytes tha tthe osc packet to send will be
+    txPacketBufferLength = txPacketSize;
+    //Store Control Name
+    memcpy(txPacketBuffer, oscItem->_controllName, strlen(oscItem->_controllName));
+    bufferIndex+=strlen(oscItem->_controllName);
+    txPacketBuffer[bufferIndex]=0;
+    bufferIndex++;
+    //Add padding to make it 32bitable
+    if(padding!=0)
+    {
+      memcpy(txPacketBuffer+bufferIndex, padBuffer, padding);
+      bufferIndex+=padding;
+    }
+    //Add middle of packet
+    memcpy(txPacketBuffer+bufferIndex, oscBufferPadding, 4);
+    bufferIndex+=4;
+    //Grab 4 bytes of te value float
+    floatCharPointer = (unsigned char*)&oscItem->_currentValue;
+    
+    txPacketBuffer[bufferIndex] = floatCharPointer[3];
+    txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
+    txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
+    txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
+  }
 }
 
 void osc::addControll(char* controllName)
@@ -147,6 +209,15 @@ float osc::getValue(unsigned short int nodeID)
   return -1;
 }
 
+void osc::setValue(char* controllName, float valueToSet)
+{
+  LLNODE* nodePointer = findByName(controllName);
+  if(nodePointer!=NULL)
+  {
+    nodePointer->_currentValue = valueToSet;
+  }
+}
+
 LLNODE* osc::findByID(unsigned short int nodeID)
 {
   LLNODE* nodePointer = startPointer;
@@ -191,6 +262,11 @@ void osc::toggleState()
 void osc::clearBuffer()
 {
   memset ( packetBuffer, 0, maxPacketBufferSize);
+}
+
+void osc::clearTXBuffer()
+{
+  memset ( txPacketBuffer, 0, maxPacketBufferSize);
 }
 
 void osc::deleteNode(unsigned short int nodeID)

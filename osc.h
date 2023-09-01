@@ -32,6 +32,9 @@ class osc
     LLNODE* findLast();
     LLNODE* findByID(unsigned short int nodeID);
     float getValue(unsigned short int nodeID);
+    void setValue(char* controllName, float valueToSet);
+    void generateOSCPacket(char* controllName);
+    void clearTXBuffer();
     LLNODE* findByName(char* controllName);
     void deleteNode(unsigned short int nodeID);
     LLNODE* findPrev(unsigned short int nodeID);
@@ -40,6 +43,8 @@ class osc
     unsigned short int totalNodes;
     
     char* packetBuffer;
+    char* txPacketBuffer;
+    unsigned short int txPacketBufferLength;
     unsigned short int maxPacketBufferSize;
     unsigned short int currentPacketSize;
     byte isChanged;
