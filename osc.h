@@ -23,6 +23,7 @@ class osc
   public:
     osc();
     void parseOSCPacket();
+    short int parseOSCPacketFiltered(char* tempControllName, unsigned short int valueIndex, float valueToKeep, float instrumentID, char* destinationControllName);
     void parseOSCPacketFiltered(char* tempControllName, unsigned short int valueIndex, float valueToKeep);
     void toggleState();
     void clearBuffer();
@@ -46,6 +47,7 @@ class osc
     LLNODE* findByName(char* controllName);
     void deleteNode(unsigned short int nodeID);
     LLNODE* findPrev(unsigned short int nodeID);
+    char* parseControlName(char* dataPacket);
 	
     LLNODE* startPointer;
     unsigned short int totalNodes;
