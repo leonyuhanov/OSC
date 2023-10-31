@@ -43,7 +43,9 @@ class osc
     float getValue(unsigned short int nodeID);
 	  float getValue(char* controllName);
     void setValue(char* controllName, float valueToSet);
+    void setValues(char* controllName, float* valuesToSet);
     void generateOSCPacket(char* controllName);
+    void generateOSCPacket(char* controllName, byte numberOfValuesTOSend);
     LLNODE* findByName(char* controllName);
     void deleteNode(unsigned short int nodeID);
     LLNODE* findPrev(unsigned short int nodeID);
