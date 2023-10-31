@@ -11,6 +11,13 @@ osc::osc()
   txPacketBufferLength=0;
 }
 
+char* osc::parseControlName(char* dataPacket)
+{
+  char* returnString = new char[strlen(dataPacket)+1];
+  memcpy(returnString, dataPacket, strlen(dataPacket)+1);
+  return returnString;
+}
+
 void osc::parseOSCPacket()
 {  
   //strlen returns up to the 1st [0] which is the terminator for the name of the OSC object
@@ -20,13 +27,13 @@ void osc::parseOSCPacket()
 
   memcpy(tempString, packetBuffer, strlen(packetBuffer)+1);
   tempString[strlen(packetBuffer)]=0;  
-  
+
   nodePointer = findByName(tempString);
  
   if(nodePointer!=NULL)
   {
     currentControllID = nodePointer->_nodeID;
-	if(nodePointer->_varType=='f')
+	  if(nodePointer->_varType=='f')
     {
       //Set Current Controll Values using Floats
       for(counter=0; counter<nodePointer->_numOfVars; counter++)
@@ -40,8 +47,7 @@ void osc::parseOSCPacket()
     		nodePointer->_controllValueArray[counter] = primaryControllValue;
   	  }
   	  nodePointer->_currentValue = nodePointer->_controllValueArray[0];
-      startTimer(nodePointer->_timer[2], nodePointer->_timer);
-	  //nodePointer->_timer[0] = millis();
+      startTimer(nodePointer->_timer[3], nodePointer->_timer);
   	  primaryControllValue = nodePointer->_currentValue;
     }
     else if(nodePointer->_varType=='i')
@@ -58,15 +64,171 @@ void osc::parseOSCPacket()
         nodePointer->_controllValueArray[counter] = tempInt;
       }
       nodePointer->_currentValue = nodePointer->_controllValueArray[0];
-      //nodePointer->_timer[0] = millis();
-      startTimer(nodePointer->_timer[2], nodePointer->_timer);
-	  primaryControllValue = nodePointer->_currentValue;
+      startTimer(nodePointer->_timer[3], nodePointer->_timer);
+	    primaryControllValue = nodePointer->_currentValue;
     }
   }
   else
   {
     //Control not registered, maybe auto add?    
+    Serial.printf("\r\n\tControll not found\t[");
+    Serial.print(tempString);
+    Serial.printf("]");
   }  
+}
+
+short int osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int valueIndex, float valueToKeep, float instrumentID, char* destinationControllName)
+{
+  //Read in the current OSC message ONLY if the value of _controllValueArray[valueIndex] == valueToKeep
+  //------------------------------------------------------------------------------------
+  //strlen returns up to the 1st [0] which is the terminator for the name of the OSC object
+  int tempInt=0;
+  char* tempString = new char[strlen(packetBuffer)+1];  
+  LLNODE* nodePointer;
+  LLNODE* realNodePointer;
+
+  memcpy(tempString, packetBuffer, strlen(packetBuffer)+1);
+  tempString[strlen(packetBuffer)]=0;  
+
+  nodePointer = findByName(tempControllName);
+  if(nodePointer!=NULL)
+  {
+    //currentControllID = nodePointer->_nodeID;
+    if(nodePointer->_varType=='f')
+    {
+      //Set Current Controll Values using Floats
+      for(counter=0; counter<nodePointer->_numOfVars; counter++)
+      {
+        packetIndex = ((counter+1)*4);
+        floatCharPointer = (unsigned char*)&primaryControllValue;
+        floatCharPointer[0] = packetBuffer[currentPacketSize-(packetIndex-3)];
+        floatCharPointer[1] = packetBuffer[currentPacketSize-(packetIndex-2)];
+        floatCharPointer[2] = packetBuffer[currentPacketSize-(packetIndex-1)];
+        floatCharPointer[3] = packetBuffer[currentPacketSize-(packetIndex)];
+        nodePointer->_controllValueArray[counter] = primaryControllValue;
+      }
+      nodePointer->_currentValue = nodePointer->_controllValueArray[0];
+    }
+    else if(nodePointer->_varType=='i')
+    {
+      //Set Current Controll Values using Floats
+      for(counter=0; counter<nodePointer->_numOfVars; counter++)
+      {
+        packetIndex = ((counter+1)*4);
+        floatCharPointer = (unsigned char*)&tempInt;
+        floatCharPointer[0] = packetBuffer[currentPacketSize-(packetIndex-3)];
+        floatCharPointer[1] = packetBuffer[currentPacketSize-(packetIndex-2)];
+        floatCharPointer[2] = packetBuffer[currentPacketSize-(packetIndex-1)];
+        floatCharPointer[3] = packetBuffer[currentPacketSize-(packetIndex)];
+        nodePointer->_controllValueArray[counter] = tempInt;
+      }
+      nodePointer->_currentValue = nodePointer->_controllValueArray[0];
+    }
+    //after the message has been read into the temp element locate the corect item and filter it
+    if(valueIndex<nodePointer->_numOfVars)
+    {
+      //If the selected control value at "valueIndex" == "valueToKeep" AND the control ID is "instrumentID"
+      if( nodePointer->_controllValueArray[valueIndex] == valueToKeep && nodePointer->_controllValueArray[0]==instrumentID)
+      {
+        //find the control name in "destinationControllName"
+        realNodePointer = findByName(destinationControllName);
+        if(realNodePointer!=NULL)
+        {
+          //Sets the global current controll id to the filtered item just received
+          currentControllID = realNodePointer->_nodeID;
+          //coppy all teh vars
+          for(counter=0; counter<nodePointer->_numOfVars; counter++)
+          {
+            realNodePointer->_controllValueArray[counter] = nodePointer->_controllValueArray[counter];
+          }
+          realNodePointer->_currentValue =  nodePointer->_currentValue;
+          primaryControllValue = realNodePointer->_currentValue;
+          startTimer(realNodePointer->_timer[3], realNodePointer->_timer);
+          return 1;
+        }
+      }
+      else
+      {
+        //Serial.printf("\r\n\tPacket Not saved");
+        return 0;
+      }
+    }
+  }
+}
+
+void osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int valueIndex, float valueToKeep)
+{
+  //Read in the current OSC message ONLY if the value of _controllValueArray[valueIndex] == valueToKeep
+  //------------------------------------------------------------------------------------
+  //strlen returns up to the 1st [0] which is the terminator for the name of the OSC object
+  int tempInt=0;
+  char* tempString = new char[strlen(packetBuffer)+1];  
+  LLNODE* nodePointer;
+  LLNODE* realNodePointer;
+
+  memcpy(tempString, packetBuffer, strlen(packetBuffer)+1);
+  tempString[strlen(packetBuffer)]=0;  
+
+  nodePointer = findByName(tempControllName);
+  if(nodePointer!=NULL)
+  {
+    //currentControllID = nodePointer->_nodeID;
+    if(nodePointer->_varType=='f')
+    {
+      //Set Current Controll Values using Floats
+      for(counter=0; counter<nodePointer->_numOfVars; counter++)
+      {
+        packetIndex = ((counter+1)*4);
+        floatCharPointer = (unsigned char*)&primaryControllValue;
+        floatCharPointer[0] = packetBuffer[currentPacketSize-(packetIndex-3)];
+        floatCharPointer[1] = packetBuffer[currentPacketSize-(packetIndex-2)];
+        floatCharPointer[2] = packetBuffer[currentPacketSize-(packetIndex-1)];
+        floatCharPointer[3] = packetBuffer[currentPacketSize-(packetIndex)];
+        nodePointer->_controllValueArray[counter] = primaryControllValue;
+      }
+      nodePointer->_currentValue = nodePointer->_controllValueArray[0];
+    }
+    else if(nodePointer->_varType=='i')
+    {
+      //Set Current Controll Values using Floats
+      for(counter=0; counter<nodePointer->_numOfVars; counter++)
+      {
+        packetIndex = ((counter+1)*4);
+        floatCharPointer = (unsigned char*)&tempInt;
+        floatCharPointer[0] = packetBuffer[currentPacketSize-(packetIndex-3)];
+        floatCharPointer[1] = packetBuffer[currentPacketSize-(packetIndex-2)];
+        floatCharPointer[2] = packetBuffer[currentPacketSize-(packetIndex-1)];
+        floatCharPointer[3] = packetBuffer[currentPacketSize-(packetIndex)];
+        nodePointer->_controllValueArray[counter] = tempInt;
+      }
+      nodePointer->_currentValue = nodePointer->_controllValueArray[0];
+    }
+    //after the message has been read into the temp element locate the corect item and filter it
+    if(valueIndex<nodePointer->_numOfVars)
+    {
+      if( nodePointer->_controllValueArray[valueIndex] == valueToKeep )
+      {
+        realNodePointer = findByName(tempString);
+        if(realNodePointer!=NULL)
+        {
+          //Sets the global current controll id to the filtered item just received
+          currentControllID = realNodePointer->_nodeID;
+          //coppy all teh vars
+          for(counter=0; counter<nodePointer->_numOfVars; counter++)
+          {
+            realNodePointer->_controllValueArray[counter] = nodePointer->_controllValueArray[counter];
+          }
+          realNodePointer->_currentValue =  nodePointer->_currentValue;
+          primaryControllValue = realNodePointer->_currentValue;
+          startTimer(realNodePointer->_timer[3], realNodePointer->_timer);
+        }
+      }
+      else
+      {
+        //Serial.printf("\r\n\tPacket Not saved");
+      }
+    }
+  }
 }
 
 void osc::generateOSCPacket(char* controllName)
@@ -191,13 +353,21 @@ void osc::addControll(char* controllName, unsigned short int numOfValues, char v
   {
     addControll(controllName, numOfValues);
     nodePointer = findByName(controllName);
-    nodePointer->_timer[2] = timeOut;
+    nodePointer->_timer[3] = timeOut;
+    //reset timer to 0
+    nodePointer->_timer[0]=0;
+    nodePointer->_timer[1]=0;
+    nodePointer->_timer[2]=0;
   }
   else if(valueType=='i')
   {
     addControll(controllName, numOfValues);
     nodePointer = findByName(controllName);
-    nodePointer->_timer[2] = timeOut;
+    nodePointer->_timer[3] = timeOut;
+    //reset timer to 0
+    nodePointer->_timer[0]=0;
+    nodePointer->_timer[1]=0;
+    nodePointer->_timer[2]=0;
     nodePointer->_varType = valueType;
   }
 }
@@ -271,6 +441,8 @@ void osc::toggleState()
     isChanged=1;
   }
 }
+
+
 
 void osc::clearBuffer()
 {
@@ -357,7 +529,7 @@ void osc::startTimer(unsigned long durationInMillis, unsigned long* timer)
 byte osc::hasTimedOut(unsigned long* timer)
 {
   timer[1] = millis();
-  if(timer[2] < timer[1]-timer[0])
+  if(timer[2] <= timer[1]-timer[0])
   {
     return 1;
   }
@@ -371,5 +543,13 @@ byte osc::hasControllTimedOut(char* controllName)
 	{
 		return hasTimedOut(nodePointer->_timer);
 	}
-  return 0;
+}
+
+void osc::timeOutControll(char* controllName)
+{
+  LLNODE* nodePointer = findByName(controllName);
+  if(nodePointer!=NULL)
+  {
+    nodePointer->_timer[2]=0;
+  }
 }

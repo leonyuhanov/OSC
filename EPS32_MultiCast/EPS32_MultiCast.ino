@@ -5,8 +5,8 @@
 
 
 //WIFI
-const char *wifi_ssid = "YourSSID";
-const char *wifi_password = "YourKEY";
+const char *wifi_ssid = "Studio";
+const char *wifi_password = "fa5fa5fa55";
 
 //OSC Vars
 osc oscObject;
@@ -14,7 +14,8 @@ AsyncUDP oscUDP;
 unsigned int oscRXPort = 5555;    //port that this device will RECIVE packets on
 unsigned int oscTXPort = 5556;    //port that this device will SEND packets to
 //Multicast address to TX to
-IPAddress multicast_ip_address = IPAddress(239,1,1,1);    //Muticast IP
+//IPAddress multicast_ip_address = IPAddress(239,1,1,1);    //Muticast IP
+IPAddress multicast_ip_address = IPAddress(224,0,0,255);    //Muticast IP
 const uint8_t numberOfControls = 2;
 float exampleData[numberOfControls] = {0,0};
 
