@@ -5,8 +5,8 @@
 
 
 //WIFI
-const char *wifi_ssid = "Studio";
-const char *wifi_password = "fa5fa5fa55";
+const char *wifi_ssid = "SSID";
+const char *wifi_password = "KEY";
 
 //OSC Vars
 osc oscObject;
