@@ -74,7 +74,8 @@ void osc::parseOSCPacket()
     Serial.printf("\r\n\tControll not found\t[");
     Serial.print(tempString);
     Serial.printf("]");
-  }  
+  }
+  delete tempString;  
 }
 
 short int osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int valueIndex, float valueToKeep, float instrumentID, char* destinationControllName)
@@ -291,106 +292,6 @@ void osc::generateOSCPacket(char* controllName)
   }
 }
 
-void osc::generateOSCPacket(char* controllName, byte numberOfValuesTOSend)
-{
-  LLNODE* oscItem = findByName(controllName);
-  if(oscItem==NULL)
-  {
-    return;
-  }
-
-  const byte bufferPaddingSize = 1+numberOfValuesTOSend+numberOfValuesTOSend+1; //  , ff 00 0
-  byte valueIndex=0, paddBufferIndex=0;
-  unsigned short int txPacketSize = 0, bufferIndex=0, dataSent=0;
-  double fractpart, intpart, padding=0;
-  char* oscBufferPadding = new char[bufferPaddingSize];
-  char padBuffer[3] = {0,0,0};
-  unsigned char* floatCharPointer;
-  int tempInteger=0;
-
-  //set up the number & Type part of the packet [,f00]  = {44,102,0,0} wil send 1 value
-  oscBufferPadding[paddBufferIndex] = 44; //  ","
-  paddBufferIndex++;
-  for(valueIndex=0; valueIndex<numberOfValuesTOSend; valueIndex++)
-  {
-    oscBufferPadding[paddBufferIndex] = oscItem->_varType ; //  "f"
-    paddBufferIndex++;
-  }
-  for(valueIndex=0; valueIndex<numberOfValuesTOSend+1; valueIndex++)
-  {
-    oscBufferPadding[paddBufferIndex] = 0; //  "0"
-    paddBufferIndex++;
-  }
-  
-
-  //Clear the TX buffer
-  clearTXBuffer();
-  txPacketSize += strlen(oscItem->_controllName)+1;
-  //Calculate Padding to make the string 32bit able as per osc spec https://opensoundcontrol.stanford.edu/spec-1_0.html#osc-packets
-  padding = (strlen(oscItem->_controllName)+1)*8;
-  padding = padding/32;
-  fractpart = modf(padding , &intpart);
-  if(fractpart==0.75)
-  {
-    padding=1;
-  }
-  else if(fractpart==0.5)
-  {
-    padding=2;
-  }
-  else if(fractpart==0.25)
-  {
-    padding=3;
-  }
-  else
-  {
-    padding=0;
-  }
-  txPacketSize+=padding;
-  //txPacketSize is now the total number of bytes tha tthe osc packet to send will be
-  txPacketBufferLength = txPacketSize+bufferPaddingSize+(numberOfValuesTOSend*4);
-  //Store Control Name
-  memcpy(txPacketBuffer, oscItem->_controllName, strlen(oscItem->_controllName));
-  bufferIndex+=strlen(oscItem->_controllName);
-  txPacketBuffer[bufferIndex]=0;
-  bufferIndex++;
-  //Add padding to make it 32bitable
-  if(padding!=0)
-  {
-    memcpy(txPacketBuffer+bufferIndex, padBuffer, padding);
-    bufferIndex+=padding;
-  }
-  //Add middle of packet
-  memcpy(txPacketBuffer+bufferIndex, oscBufferPadding, bufferPaddingSize);
-  bufferIndex+=bufferPaddingSize;
-  
-  //write each value into the buffer
-  for(valueIndex=0; valueIndex<numberOfValuesTOSend; valueIndex++)
-  {
-    if(oscItem->_varType==102)  //floats
-    {
-    //Grab 4 bytes of te value float
-    floatCharPointer = (unsigned char*)&oscItem->_controllValueArray[valueIndex];
-    txPacketBuffer[bufferIndex] = floatCharPointer[3];
-    txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
-    txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
-    txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
-    bufferIndex+=4;
-    }
-    else if(oscItem->_varType==105) //Integers
-    {
-      tempInteger = oscItem->_controllValueArray[valueIndex];
-      floatCharPointer = (unsigned char*)&tempInteger;
-      txPacketBuffer[bufferIndex] = floatCharPointer[3];
-      txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
-      txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
-      txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
-      bufferIndex+=4;
-    }
-  }
-  
-}
-
 void osc::addControll(char* controllName)
 {
   addControll(controllName, 1);
@@ -498,19 +399,6 @@ void osc::setValue(char* controllName, float valueToSet)
   if(nodePointer!=NULL)
   {
     nodePointer->_currentValue = valueToSet;
-  }
-}
-
-void osc::setValues(char* controllName, float* valuesToSet)
-{
-  byte valueIndex = 0;
-  LLNODE* nodePointer = findByName(controllName);
-  if(nodePointer!=NULL)
-  {
-    for(valueIndex=0; valueIndex<nodePointer->_numOfVars; valueIndex++)
-    {
-      nodePointer->_controllValueArray[valueIndex] = valuesToSet[valueIndex];
-    }
   }
 }
 
