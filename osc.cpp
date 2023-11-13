@@ -155,6 +155,7 @@ short int osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int
       }
     }
   }
+  delete tempString; 
 }
 
 void osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int valueIndex, float valueToKeep)
@@ -230,6 +231,7 @@ void osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int valu
       }
     }
   }
+  delete tempString; 
 }
 
 void osc::generateOSCPacket(char* controllName)
