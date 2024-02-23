@@ -16,6 +16,13 @@ typedef struct LLNode{
   float* _controllValueArray;
   unsigned long _timer[4];
   LLNode* nextNode; 
+  
+  ~LLNode()
+  {
+    //destructor
+    delete _controllName;
+	  delete _controllValueArray;
+  }
 }LLNODE;
 
 class osc
