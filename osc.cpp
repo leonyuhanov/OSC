@@ -234,11 +234,14 @@ void osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int valu
   delete tempString; 
 }
 
+/*
 void osc::generateOSCPacket(char* controllName)
 {
-  unsigned short int txPacketSize = 8, bufferIndex=0, dataSent=0;
+  unsigned short int txPacketSize = 0, bufferIndex=0, dataSent=0, varCounter=0;
   double fractpart, intpart, padding=0;
-  char oscBufferPadding[4] = {44,102,0,0}, padBuffer[3] = {0,0,0};
+  char padBuffer[3] = {0,0,0};
+  char* multiValOSCBufferPadding;
+  unsigned short int paddIndex=0, paddLength=0;
   unsigned char* floatCharPointer;
 
   LLNODE* oscItem = findByName(controllName);
@@ -268,6 +271,8 @@ void osc::generateOSCPacket(char* controllName)
       padding=0;
     }
     txPacketSize+=padding;
+    //add 4 bytes per (oscItem->_numOfVars)
+    txPacketSize += ((oscItem->_numOfVars)*4)+1+(oscItem->_numOfVars*2)+1;
     //txPacketSize is now the total number of bytes tha tthe osc packet to send will be
     txPacketBufferLength = txPacketSize;
     //Store Control Name
@@ -281,16 +286,150 @@ void osc::generateOSCPacket(char* controllName)
       memcpy(txPacketBuffer+bufferIndex, padBuffer, padding);
       bufferIndex+=padding;
     }
-    //Add middle of packet
-    memcpy(txPacketBuffer+bufferIndex, oscBufferPadding, 4);
-    bufferIndex+=4;
-    //Grab 4 bytes of te value float
-    floatCharPointer = (unsigned char*)&oscItem->_currentValue;
+    //Add middle of packet that tells how many values are stored
+    paddLength = 1+(oscItem->_numOfVars*2)+1;
+    multiValOSCBufferPadding = new char[paddLength];//,f....0
+    multiValOSCBufferPadding[paddIndex] = ',';
+    paddIndex++;
+    //add f or i
+    for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
+    {
+      multiValOSCBufferPadding[paddIndex] = oscItem->_varType;
+      paddIndex++;
+    }
+    //add 0 for each f or i
+    //for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
+    //{
+    //  multiValOSCBufferPadding[paddIndex] = 0;
+    //  paddIndex++;
+   // }
     
-    txPacketBuffer[bufferIndex] = floatCharPointer[3];
-    txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
-    txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
-    txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
+    multiValOSCBufferPadding[paddIndex]=0;
+    memcpy(txPacketBuffer+bufferIndex, multiValOSCBufferPadding, paddLength);
+    delete multiValOSCBufferPadding;
+    bufferIndex+=paddLength;
+    //store each VAR
+    for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
+    {
+      //Grab 4 bytes of the value float
+      floatCharPointer = (unsigned char*)&oscItem->_controllValueArray[varCounter];
+      txPacketBuffer[bufferIndex] = floatCharPointer[3];
+      txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
+      txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
+      txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
+      bufferIndex+=4;
+    }
+    //Grab 4 bytes of the value float
+    //floatCharPointer = (unsigned char*)&oscItem->_currentValue;
+    //txPacketBuffer[bufferIndex] = floatCharPointer[3];
+    //txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
+    //txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
+    //txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
+    
+  }
+}
+*/
+void osc::generateOSCPacket(char* controllName)
+{
+  unsigned short int txPacketSize = 0, bufferIndex=0, dataSent=0, varCounter=0;
+  double fractpart, intpart, padding_name=0, padding_total=0;
+  char padBuffer[3] = {0,0,0};
+  unsigned short int paddIndex=0, paddLength=0;
+  unsigned char* floatCharPointer;
+
+  LLNODE* oscItem = findByName(controllName);
+  if(oscItem!=NULL)
+  {
+    //Clear the TX buffer
+    clearTXBuffer();
+    txPacketSize += strlen(oscItem->_controllName)+1;
+    //Calculate Padding to make the string 32bit able as per osc spec https://opensoundcontrol.stanford.edu/spec-1_0.html#osc-packets
+    padding_name = (strlen(oscItem->_controllName)+1)*8;
+    padding_name = padding_name/32;
+    fractpart = modf(padding_name , &intpart);
+    if(fractpart==0.75)
+    {
+      padding_name=1;
+    }
+    else if(fractpart==0.5)
+    {
+      padding_name=2;
+    }
+    else if(fractpart==0.25)
+    {
+      padding_name=3;
+    }
+    else
+    {
+      padding_name=0;
+    }
+    txPacketSize+=padding_name;
+    //Add comma
+  txPacketSize++;
+  //add var type label f,i etc... for each var
+  txPacketSize += oscItem->_numOfVars;
+  //add data for each var eg..(4bytes per float)
+  txPacketSize += oscItem->_numOfVars*4;
+  //----  make sure the current datapacket size is deivisible by 4 otherwise add padding bytes  ----
+  padding_total = (double)txPacketSize/4;
+  fractpart = modf(padding_total , &intpart);
+  if(fractpart==0.75)
+    {
+      padding_total=1;
+    }
+    else if(fractpart==0.5)
+    {
+      padding_total=2;
+    }
+    else if(fractpart==0.25)
+    {
+      padding_total=3;
+    }
+    else
+    {
+      padding_total=0;
+    }
+  txPacketSize+=padding_total;
+  //--------------------------------------------------------------------------------
+  //txPacketSize is now the total size of the packet being TXd
+  txPacketBufferLength = txPacketSize;
+  //Store the controll name
+  memcpy(txPacketBuffer, oscItem->_controllName, strlen(oscItem->_controllName));
+  bufferIndex+=strlen(oscItem->_controllName);
+  txPacketBuffer[bufferIndex]=0;
+  bufferIndex++;
+  //add padbuffer for controll name
+  for(varCounter=0; varCounter<padding_name; varCounter++)
+  {
+    txPacketBuffer[bufferIndex]=0;
+    bufferIndex++;
+  }
+  //add comma
+  txPacketBuffer[bufferIndex]=',';
+  bufferIndex++;
+  //add var type labels
+  for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
+  {
+    txPacketBuffer[bufferIndex]='f';
+    bufferIndex++;
+  }
+  //add pad buffer for whole packet
+  for(varCounter=0; varCounter<padding_total; varCounter++)
+  {
+    txPacketBuffer[bufferIndex]=0;
+    bufferIndex++;
+  }
+  //add each vars data value
+  for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
+    {
+      //Grab 4 bytes of the value float
+      floatCharPointer = (unsigned char*)&oscItem->_controllValueArray[varCounter];
+      txPacketBuffer[bufferIndex] = floatCharPointer[3];
+      txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
+      txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
+      txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
+      bufferIndex+=4;
+    }
   }
 }
 
@@ -401,6 +540,19 @@ void osc::setValue(char* controllName, float valueToSet)
   if(nodePointer!=NULL)
   {
     nodePointer->_currentValue = valueToSet;
+    nodePointer->_controllValueArray[0] = valueToSet;
+  }
+}
+
+void osc::setValue(char* controllName, unsigned short int index, float valueToSet)
+{
+  LLNODE* nodePointer = findByName(controllName);
+  if(nodePointer!=NULL)
+  {
+    if(index<nodePointer->_numOfVars)
+    {
+      nodePointer->_controllValueArray[index] = valueToSet;
+    }
   }
 }
 
