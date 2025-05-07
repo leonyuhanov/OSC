@@ -64,6 +64,7 @@ class osc
     char* txPacketBuffer;
     unsigned short int txPacketBufferLength;
     unsigned short int maxPacketBufferSize;
+    unsigned short int maxTXPacketBufferSize;
     unsigned short int currentPacketSize;
     byte isChanged;
     float primaryControllValue;

@@ -7,7 +7,8 @@ osc::osc()
   packetBuffer = new char[maxPacketBufferSize];
   startPointer = NULL;
   totalNodes = 0;
-  txPacketBuffer = new char[maxPacketBufferSize];
+  maxTXPacketBufferSize = 10000;
+  txPacketBuffer = new char[maxTXPacketBufferSize];
   txPacketBufferLength=0;
 }
 
@@ -234,101 +235,6 @@ void osc::parseOSCPacketFiltered(char* tempControllName, unsigned short int valu
   delete tempString; 
 }
 
-/*
-void osc::generateOSCPacket(char* controllName)
-{
-  unsigned short int txPacketSize = 0, bufferIndex=0, dataSent=0, varCounter=0;
-  double fractpart, intpart, padding=0;
-  char padBuffer[3] = {0,0,0};
-  char* multiValOSCBufferPadding;
-  unsigned short int paddIndex=0, paddLength=0;
-  unsigned char* floatCharPointer;
-
-  LLNODE* oscItem = findByName(controllName);
-  if(oscItem!=NULL)
-  {
-    //Clear the TX buffer
-    clearTXBuffer();
-    txPacketSize += strlen(oscItem->_controllName)+1;
-    //Calculate Padding to make the string 32bit able as per osc spec https://opensoundcontrol.stanford.edu/spec-1_0.html#osc-packets
-    padding = (strlen(oscItem->_controllName)+1)*8;
-    padding = padding/32;
-    fractpart = modf(padding , &intpart);
-    if(fractpart==0.75)
-    {
-      padding=1;
-    }
-    else if(fractpart==0.5)
-    {
-      padding=2;
-    }
-    else if(fractpart==0.25)
-    {
-      padding=3;
-    }
-    else
-    {
-      padding=0;
-    }
-    txPacketSize+=padding;
-    //add 4 bytes per (oscItem->_numOfVars)
-    txPacketSize += ((oscItem->_numOfVars)*4)+1+(oscItem->_numOfVars*2)+1;
-    //txPacketSize is now the total number of bytes tha tthe osc packet to send will be
-    txPacketBufferLength = txPacketSize;
-    //Store Control Name
-    memcpy(txPacketBuffer, oscItem->_controllName, strlen(oscItem->_controllName));
-    bufferIndex+=strlen(oscItem->_controllName);
-    txPacketBuffer[bufferIndex]=0;
-    bufferIndex++;
-    //Add padding to make it 32bitable
-    if(padding!=0)
-    {
-      memcpy(txPacketBuffer+bufferIndex, padBuffer, padding);
-      bufferIndex+=padding;
-    }
-    //Add middle of packet that tells how many values are stored
-    paddLength = 1+(oscItem->_numOfVars*2)+1;
-    multiValOSCBufferPadding = new char[paddLength];//,f....0
-    multiValOSCBufferPadding[paddIndex] = ',';
-    paddIndex++;
-    //add f or i
-    for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
-    {
-      multiValOSCBufferPadding[paddIndex] = oscItem->_varType;
-      paddIndex++;
-    }
-    //add 0 for each f or i
-    //for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
-    //{
-    //  multiValOSCBufferPadding[paddIndex] = 0;
-    //  paddIndex++;
-   // }
-    
-    multiValOSCBufferPadding[paddIndex]=0;
-    memcpy(txPacketBuffer+bufferIndex, multiValOSCBufferPadding, paddLength);
-    delete multiValOSCBufferPadding;
-    bufferIndex+=paddLength;
-    //store each VAR
-    for(varCounter=0; varCounter<oscItem->_numOfVars; varCounter++)
-    {
-      //Grab 4 bytes of the value float
-      floatCharPointer = (unsigned char*)&oscItem->_controllValueArray[varCounter];
-      txPacketBuffer[bufferIndex] = floatCharPointer[3];
-      txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
-      txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
-      txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
-      bufferIndex+=4;
-    }
-    //Grab 4 bytes of the value float
-    //floatCharPointer = (unsigned char*)&oscItem->_currentValue;
-    //txPacketBuffer[bufferIndex] = floatCharPointer[3];
-    //txPacketBuffer[bufferIndex+1] = floatCharPointer[2];
-    //txPacketBuffer[bufferIndex+2] = floatCharPointer[1];
-    //txPacketBuffer[bufferIndex+3] = floatCharPointer[0];
-    
-  }
-}
-*/
 void osc::generateOSCPacket(char* controllName)
 {
   unsigned short int txPacketSize = 0, bufferIndex=0, dataSent=0, varCounter=0;
@@ -606,7 +512,7 @@ void osc::clearBuffer()
 
 void osc::clearTXBuffer()
 {
-  memset ( txPacketBuffer, 0, maxPacketBufferSize);
+  memset ( txPacketBuffer, 0, maxTXPacketBufferSize);
 }
 
 void osc::deleteNode(unsigned short int nodeID)
